@@ -24,7 +24,7 @@ This project was developed as part of a robotics course project. The robot uses 
 
 ## System Architecture
 
-![System Architecture](docs/system_architecture.png)
+![System Architecture](docs/system_architecture.jpg)
 
 The robot consists of an ESP32 controller connected to four DC motors, rotary encoders, an ultrasonic sensor, and a bucket servo mechanism. ROS2 communicates with the ESP32 and provides visualization and autonomous control functions.
 
@@ -32,7 +32,7 @@ The robot consists of an ESP32 controller connected to four DC motors, rotary en
 
 ## Hardware Schematic
 
-![Hardware Schematic](docs/hardware_schematic.png)
+![Hardware Schematic](docs/hardware_schematic.jpg)
 
 Hardware platform:
 - ESP32
@@ -46,7 +46,7 @@ Hardware platform:
 
 ## Manual Control Logic
 
-![Manual Control](docs/manual_control_flowchart.png)
+![Manual Control](docs/manual_control_flowchart.jpg)
 
 Manual mode uses joystick commands while continuously checking obstacle conditions and deadman safety logic before executing movement commands.
 
@@ -54,7 +54,7 @@ Manual mode uses joystick commands while continuously checking obstacle conditio
 
 ## Autonomous Navigation Logic
 
-![Autonomous Navigation](docs/autonomous_navigation_flowchart.png)
+![Autonomous Navigation](docs/autonomous_navigation_flowchart.jpg)
 
 The autonomous mode performs:
 
@@ -70,7 +70,7 @@ The autonomous mode performs:
 
 ## ROS2 Architecture and Visualization
 
-![ROS2 Graph](docs/ros2_graph_and_rviz.png)
+![ROS2 Graph](docs/ros2_graph.jpg)
 
 ROS2 nodes include:
 
@@ -192,19 +192,6 @@ ros2 launch bulldozer_control bulldozer.launch.py
 
 ### Design Tools
 - KiCad
-
----
-
-## My Contributions
-
-- Developed ESP32 firmware for motor and servo control
-- Implemented wheel odometry using rotary encoders
-- Developed ROS2 nodes for odometry and TF publishing
-- Implemented goal-based autonomous navigation
-- Implemented obstacle avoidance logic
-- Developed UDP communication between ROS2 and ESP32
-- Designed hardware schematic and system integration
-- Developed RViz2-based operator interface
 
 ---
 
