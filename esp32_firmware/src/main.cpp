@@ -8,8 +8,8 @@
 // WIFI
 // ==========================================
 
-const char* ssid = "Fauzan";
-const char* password = "abcde12345";
+const char* ssid = "admin";
+const char* password = "admin";
 
 WiFiUDP udp;
 
