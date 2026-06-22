@@ -71,6 +71,7 @@ The autonomous mode performs:
 ## ROS2 Architecture and Visualization
 
 ![ROS2 Graph](docs/ros2_graph.jpg)
+![ROS2 Graph](docs/gui_rviz2.jpg)
 
 ROS2 nodes include:
 
