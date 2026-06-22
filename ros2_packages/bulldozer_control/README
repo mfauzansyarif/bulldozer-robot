@@ -1,7 +1,7 @@
+How to run ros2 packages:
 cd ~/ros2_ws/
 colcon build
-ros2 launch bulldozer_teleop bulldozer.launch.py
-rqt_graph
+ros2 launch bulldozer_control bulldozer.launch.py
 
 NAVIGATION PARAMETER (AUTO NODE)
 turn_pwm
