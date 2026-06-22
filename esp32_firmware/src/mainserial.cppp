@@ -1,0 +1,495 @@
+#include <Arduino.h>
+#include <ESP32Servo.h>
+#include <WiFi.h>
+#include <WiFiUdp.h>
+
+// ==========================================
+// MOTOR PIN
+// ==========================================
+
+// LEFT MOTOR
+#define PWMA 25
+#define AIN1 27
+#define AIN2 26
+
+// RIGHT MOTOR
+#define PWMB 14
+#define BIN1 12
+#define BIN2 13
+
+// ==========================================
+// SERVO
+// ==========================================
+
+#define SERVO_PIN 33
+
+Servo bucketServo;
+
+int currentServoAngle = 90;
+
+// ==========================================
+// ULTRASONIC
+// ==========================================
+
+#define TRIG_PIN 18
+#define ECHO_PIN 19
+
+// ==========================================
+// ENCODER
+// ==========================================
+
+#define ENCODER_LEFT 32
+#define ENCODER_RIGHT 34
+
+// ==========================================
+// PWM
+// ==========================================
+
+#define PWM_FREQ 1000
+#define PWM_RESOLUTION 8
+
+#define CHANNEL_LEFT 6
+#define CHANNEL_RIGHT 7
+
+// ==========================================
+// ENCODER VARIABLE
+// ==========================================
+
+volatile long leftTicks = 0;
+volatile long rightTicks = 0;
+
+volatile unsigned long lastLeftInterrupt = 0;
+volatile unsigned long lastRightInterrupt = 0;
+
+// ==========================================
+// RPM VARIABLE
+// ==========================================
+
+float leftRPM = 0;
+float rightRPM = 0;
+
+long prevLeftTicks = 0;
+long prevRightTicks = 0;
+
+// ==========================================
+// SERIAL BUFFER
+// ==========================================
+
+char inputBuffer[50];
+int bufferIndex = 0;
+
+// ==========================================
+// FUNCTION DECLARATION
+// ==========================================
+
+void setMotor(int leftPWM, int rightPWM);
+
+float readDistance();
+
+void IRAM_ATTR leftEncoderISR();
+void IRAM_ATTR rightEncoderISR();
+
+void setMotor(int leftPWM, int rightPWM);
+
+// ==========================================
+// WIFI CREDENTIALS
+// ==========================================
+const char* ssid = "Ninafa";
+const char* password = "abcde12345";
+WiFiUDP udp;
+const int udpPort = 8888;
+char incomingPacket[255];
+
+
+// ==========================================
+// SETUP
+// ==========================================
+
+void setup() {
+
+  Serial.begin(115200);
+
+  // ==========================================
+  // MOTOR PIN
+  // ==========================================
+
+  pinMode(AIN1, OUTPUT);
+  pinMode(AIN2, OUTPUT);
+
+  pinMode(BIN1, OUTPUT);
+  pinMode(BIN2, OUTPUT);
+
+  // ==========================================
+  // PWM SETUP
+  // ==========================================
+
+  ledcSetup(CHANNEL_LEFT, PWM_FREQ, PWM_RESOLUTION);
+  ledcAttachPin(PWMA, CHANNEL_LEFT);
+
+  ledcSetup(CHANNEL_RIGHT, PWM_FREQ, PWM_RESOLUTION);
+  ledcAttachPin(PWMB, CHANNEL_RIGHT);
+
+  // ==========================================
+  // SERVO
+  // ==========================================
+
+  bucketServo.attach(SERVO_PIN);
+
+  bucketServo.write(90);
+
+  // ==========================================
+  // ULTRASONIC
+  // ==========================================
+
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+
+  // ==========================================
+  // ENCODER
+  // ==========================================
+
+  pinMode(ENCODER_LEFT, INPUT_PULLUP);
+  pinMode(ENCODER_RIGHT, INPUT);
+
+  attachInterrupt(
+    digitalPinToInterrupt(ENCODER_LEFT),
+    leftEncoderISR,
+    RISING
+  );
+
+  attachInterrupt(
+    digitalPinToInterrupt(ENCODER_RIGHT),
+    rightEncoderISR,
+    RISING
+  );
+
+  // ==========================================
+  // WiFi
+  // ==========================================
+  WiFi.begin(ssid, password);
+
+  Serial.print("Connecting WiFi");
+
+  while (WiFi.status() != WL_CONNECTED) {
+
+    delay(500);
+
+    Serial.print(".");
+  }
+
+  Serial.println();
+  Serial.println("WiFi Connected");
+
+  Serial.print("ESP32 IP: ");
+  Serial.println(WiFi.localIP());
+
+  udp.begin(udpPort);
+
+  Serial.print("UDP Port: ");
+  Serial.println(udpPort);
+
+
+  // ==========================================
+
+  Serial.println("Bulldozer Ready");
+}
+
+// ==========================================
+// LOOP
+// ==========================================
+
+void loop() {
+  // ==========================================
+  // UDP
+  // ==========================================
+  int packetSize = udp.parsePacket();
+
+  if (packetSize) {
+
+    int len = udp.read(
+      incomingPacket,
+      255
+    );
+
+    if (len > 0) {
+
+      incomingPacket[len] = 0;
+    }
+
+    Serial.print("UDP: ");
+
+    Serial.println(incomingPacket);
+  }
+
+  // ==========================================
+  // DISTANCE
+  // ==========================================
+
+  static unsigned long lastDistancePrint = 0;
+
+  if (millis() - lastDistancePrint > 100) {
+
+    float distance = readDistance();
+
+    if (distance < 0) {
+
+      Serial.println("DIST:-1");
+    }
+
+    else {
+
+      Serial.print("DIST:");
+      Serial.println(distance);
+    }
+
+    lastDistancePrint = millis();
+  }
+
+  // ==========================================
+  // RPM CALCULATION
+  // ==========================================
+
+  static unsigned long lastRPMTime = 0;
+
+  if (millis() - lastRPMTime >= 100) {
+
+    long deltaLeft =
+      leftTicks - prevLeftTicks;
+
+    long deltaRight =
+      rightTicks - prevRightTicks;
+
+    // ======================================
+    // RPM
+    // ======================================
+
+    leftRPM =
+      (deltaLeft / 40.0) * 600.0;
+
+    rightRPM =
+      (deltaRight / 40.0) * 600.0;
+
+    // ======================================
+    // SAVE CURRENT
+    // ======================================
+
+    prevLeftTicks = leftTicks;
+    prevRightTicks = rightTicks;
+
+    // ======================================
+    // SERIAL OUTPUT
+    // ======================================
+
+    Serial.print("RPM:");
+    Serial.print(leftRPM);
+
+    Serial.print(",");
+    Serial.println(rightRPM);
+
+    lastRPMTime = millis();
+  }
+
+  // ==========================================
+  // SERIAL COMMAND
+  // ==========================================
+
+  static unsigned long lastServoUpdate = 0;
+
+  if (Serial.available()) {
+
+    char c = Serial.read();
+
+    // ======================================
+    // NEWLINE = FULL COMMAND
+    // ======================================
+
+    if (c == '\n') {
+
+      inputBuffer[bufferIndex] = '\0';
+
+      int leftPWM = 0;
+      int rightPWM = 0;
+      int servoAngle = 90;
+
+      int parsed = sscanf(
+        inputBuffer,
+        "%d,%d,%d",
+        &leftPWM,
+        &rightPWM,
+        &servoAngle
+      );
+
+      // ======================================
+      // VALID COMMAND
+      // ======================================
+
+      if (parsed == 3) {
+
+        // motor
+        setMotor(leftPWM, rightPWM);
+
+        // servo throttle
+        if (
+          servoAngle != currentServoAngle &&
+          millis() - lastServoUpdate > 10
+        ) {
+
+          bucketServo.write(servoAngle);
+
+          currentServoAngle = servoAngle;
+
+          lastServoUpdate = millis();
+        }
+      }
+
+      // ======================================
+      // RESET BUFFER
+      // ======================================
+
+      bufferIndex = 0;
+    }
+
+    // ======================================
+    // NORMAL CHARACTER
+    // ======================================
+
+    else {
+
+      // ignore carriage return
+      if (c == '\r') {
+      }
+
+      // prevent overflow
+      if (bufferIndex < sizeof(inputBuffer) - 1) {
+
+        inputBuffer[bufferIndex++] = c;
+      }
+    }
+  }
+}
+
+// ==========================================
+// MOTOR CONTROL
+// ==========================================
+
+void setMotor(int leftPWM, int rightPWM) {
+
+  // ==========================================
+  // LEFT MOTOR
+  // ==========================================
+
+  if (leftPWM > 0) {
+
+    digitalWrite(AIN1, HIGH);
+    digitalWrite(AIN2, LOW);
+  }
+
+  else if (leftPWM < 0) {
+
+    digitalWrite(AIN1, LOW);
+    digitalWrite(AIN2, HIGH);
+  }
+
+  else {
+
+    digitalWrite(AIN1, LOW);
+    digitalWrite(AIN2, LOW);
+  }
+
+  // ==========================================
+  // RIGHT MOTOR
+  // ==========================================
+
+  if (rightPWM > 0) {
+
+    digitalWrite(BIN1, HIGH);
+    digitalWrite(BIN2, LOW);
+  }
+
+  else if (rightPWM < 0) {
+
+    digitalWrite(BIN1, LOW);
+    digitalWrite(BIN2, HIGH);
+  }
+
+  else {
+
+    digitalWrite(BIN1, LOW);
+    digitalWrite(BIN2, LOW);
+  }
+
+  // ==========================================
+  // PWM OUTPUT
+  // ==========================================
+
+  ledcWrite(CHANNEL_LEFT, abs(leftPWM));
+  ledcWrite(CHANNEL_RIGHT, abs(rightPWM));
+}
+
+// ==========================================
+// ULTRASONIC FUNCTION
+// ==========================================
+
+float readDistance() {
+
+  // clear trigger
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+
+  // trigger pulse
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  // read echo
+  long duration =
+    pulseIn(ECHO_PIN, HIGH, 30000);
+
+  // timeout
+  if (duration == 0) {
+
+    return -1;
+  }
+
+  // convert to cm
+  float distance =
+    duration * 0.034 / 2;
+
+  // invalid
+  if (distance > 400) {
+
+    return -1;
+  }
+
+  return distance;
+}
+
+// ==========================================
+// ENCODER ISR
+// ==========================================
+
+void IRAM_ATTR leftEncoderISR() {
+
+  unsigned long now = micros();
+
+  if (now - lastLeftInterrupt > 1500) {
+
+    leftTicks++;
+
+    lastLeftInterrupt = now;
+  }
+}
+
+// ==========================================
+
+void IRAM_ATTR rightEncoderISR() {
+
+  unsigned long now = micros();
+
+  if (now - lastRightInterrupt > 1500) {
+
+    rightTicks++;
+
+    lastRightInterrupt = now;
+  }
+}

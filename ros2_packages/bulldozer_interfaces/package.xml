@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+
+<package format="3">
+
+  <name>bulldozer_interfaces</name>
+  <version>0.0.0</version>
+
+  <description>Bulldozer custom interfaces</description>
+
+  <maintainer email="mfauzansyarif@todo.todo">
+    mfauzansyarif
+  </maintainer>
+
+  <license>TODO: License declaration</license>
+
+  <!-- BUILD -->
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
+
+  <!-- EXEC -->
+
+  <exec_depend>rosidl_default_runtime</exec_depend>
+
+  <!-- GROUP -->
+
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
+  <!-- EXPORT -->
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+
+</package>

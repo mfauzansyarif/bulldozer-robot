@@ -1,0 +1,29 @@
+cd ~/ros2_ws/
+colcon build
+ros2 launch bulldozer_teleop bulldozer.launch.py
+rqt_graph
+
+NAVIGATION PARAMETER (AUTO NODE)
+turn_pwm
+drive_pwm
+servo_angle
+BUCKET_DUMP
+BUCKET_CARRY
+arrive_tolerance
+heading_tolerance
+realign_tolerance
+obstacle_threshold     
+
+CAR PHYSICAL PARAMETERS (ODOM NODE)
+wheel_diameter (Smaller Diameter, Further IRL)
+wheel_base (Smaller Base, Smaller Angle IRL)
+ticks_per_rev
+max_tick_jump
+
+ESP32 IP PARAMETER (SERIAL NODE)
+self.esp32_ip
+self.udp_port
+
+ESP32 WIFI PARAMETER (MAIN.CPP)
+const char* ssid
+const char* password
